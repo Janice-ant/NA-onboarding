@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mews NA Onboarding – First 7-Day Volume Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    /* =====================================================
+       RESET & VARIABLES
+       ===================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0f1117;
+      --surface:    #1a1d27;
+      --surface2:   #22263a;
+      --border:     #2e3350;
+      --accent:     #5c6ef8;
+      --accent2:    #a78bfa;
+      --accent3:    #34d399;
+      --danger:     #f87171;
+      --warning:    #fbbf24;
+      --text:       #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim:   #64748b;
+      --radius:     12px;
+      --radius-sm:  8px;
+      --shadow:     0 4px 24px rgba(0,0,0,.45);
+      --c0: #f87171;
+      --c1: #fbbf24;
+      --c2: #34d399;
+    }
+
+    html { font-size: 15px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* =====================================================
+       HEADER
+       ===================================================== */
+    .app-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-brand { display: flex; align-items: center; gap: 12px; }
+
+    .header-brand .logo {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; color: #fff;
+    }
+
+    .header-brand h1 { font-size: 1.15rem; font-weight: 600; }
+    .header-brand p  { font-size: 0.78rem; color: var(--text-muted); }
+
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+
+    .last-refreshed { font-size: 0.75rem; color: var(--text-dim); }
+
+    /* =====================================================
+       MAIN LAYOUT
+       ===================================================== */
+    .main-content {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 32px 48px;
+    }
+
+    /* =====================================================
+       CONNECTION PANEL
+       ===================================================== */
+    .connection-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 24px;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+
+    .connection-panel.connected { border-color: var(--accent3); }
+    .connection-panel.error     { border-color: var(--danger); }
+
+    .connection-header {
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      gap: 12px;
+    }
+
+    .connection-header:hover { background: var(--surface2); }
+
+    .conn-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .conn-status-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+
+    .conn-status-dot.connected { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
+    .conn-status-dot.loading   { background: var(--warning); animation: pulse 1s infinite; }
+    .conn-status-dot.error     { background: var(--danger); }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .conn-status-text { font-size: 0.78rem; color: var(--text-muted); font-weight: 400; }
+    .conn-toggle-icon { font-size: 0.75rem; color: var(--text-dim); transition: transform .2s; }
+    .conn-toggle-icon.open { transform: rotate(180deg); }
+
+    .connection-body {
+      border-top: 1px solid var(--border);
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .connection-body.hidden { display: none; }
+
+    .conn-field { display: flex; flex-direction: column; gap: 6px; }
+    .conn-field.full { grid-column: 1 / -1; }
+
+    .conn-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-dim);
+    }
+
+    .conn-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 9px 12px;
+      font-size: 0.85rem;
+      font-family: 'Courier New', monospace;
+      outline: none;
+      transition: border-color .15s;
+    }
+
+    .conn-input:focus { border-color: var(--accent); }
+    .conn-input::placeholder { color: var(--text-dim); font-style: italic; }
+
+    .conn-input[type="password"] { letter-spacing: .1em; }
+
+    .conn-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .conn-hint {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .conn-error-msg {
+      grid-column: 1 / -1;
+      background: rgba(248,113,113,.1);
+      border: 1px solid rgba(248,113,113,.3);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      color: var(--danger);
+      display: none;
+    }
+
+    .conn-error-msg.visible { display: block; }
+
+    /* =====================================================
+       BUTTONS
+       ===================================================== */
+    .btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 500;
+      font-family: inherit;
+      transition: all .15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .btn-primary   { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4a5ce8; }
+
+    .btn-success   { background: rgba(52,211,153,.15); color: var(--accent3); border: 1px solid rgba(52,211,153,.35); }
+    .btn-success:hover:not(:disabled) { background: rgba(52,211,153,.25); }
+
+    .btn-ghost     { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+
+    .btn-sm { padding: 5px 12px; font-size: 0.78rem; }
+
+    /* =====================================================
+       FILTER BAR
+       ===================================================== */
+    .filter-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 22px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .filter-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .period-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+    }
+
+    .period-tab {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      transition: all .15s;
+    }
+
+    .period-tab.active { background: var(--accent); color: #fff; }
+    .period-tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+    .period-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 7px 14px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+      transition: border-color .15s;
+      min-width: 185px;
+    }
+
+    .period-select:hover, .period-select:focus { border-color: var(--accent); }
+
+    .filter-pill {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+    }
+
+    .filter-pill span { color: var(--accent2); font-weight: 600; }
+
+    /* =====================================================
+       LOADING OVERLAY (full-dashboard)
+       ===================================================== */
+    #globalLoading {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,17,23,.7);
+      backdrop-filter: blur(3px);
+      z-index: 999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    #globalLoading.visible { display: flex; }
+
+    .spinner-large {
+      width: 44px; height: 44px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-msg { font-size: 0.88rem; color: var(--text-muted); }
+
+    /* =====================================================
+       KPI CARDS
+       ===================================================== */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .2s, transform .15s;
+    }
+
+    .kpi-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--kpi-color, var(--accent));
+    }
+
+    .kpi-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+
+    .kpi-value {
+      font-size: 1.95rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+
+    .kpi-sub { font-size: 0.73rem; color: var(--text-dim); }
+
+    /* =====================================================
+       CHART CARDS
+       ===================================================== */
+    .chart-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .chart-grid-3 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .chart-title    { font-size: 0.95rem; font-weight: 600; }
+    .chart-subtitle { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 16px; }
+
+    .chart-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .chart-body { flex: 1; position: relative; min-height: 275px; }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.77rem; color: var(--text-muted); }
+
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* =====================================================
+       STATE OVERLAYS
+       ===================================================== */
+    .state-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      z-index: 10;
+    }
+
+    .state-overlay.hidden { display: none; }
+
+    .state-icon { font-size: 1.8rem; opacity: .45; }
+    .state-text { font-size: 0.8rem; color: var(--text-muted); text-align: center; max-width: 210px; }
+
+    .spinner-sm {
+      width: 26px; height: 26px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    /* =====================================================
+       SUMMARY TABLE
+       ===================================================== */
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.81rem;
+      margin-top: 14px;
+    }
+
+    .summary-table th {
+      text-align: left;
+      padding: 7px 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .summary-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .summary-table tr:last-child td { border-bottom: none; }
+    .summary-table tr:hover td { background: var(--surface2); }
+
+    .bar-inline { display: flex; align-items: center; gap: 8px; }
+    .bar-track  { flex: 1; height: 5px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+    .bar-fill   { height: 100%; border-radius: 99px; transition: width .5s ease; }
+    .pct-label  { font-size: 0.73rem; font-weight: 600; color: var(--accent2); white-space: nowrap; min-width: 36px; text-align: right; }
+
+    /* =====================================================
+       FOOTER
+       ===================================================== */
+    .app-footer {
+      margin-top: 48px;
+      padding: 18px 32px;
+      border-top: 1px solid var(--border);
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    /* =====================================================
+       RESPONSIVE
+       ===================================================== */
+    @media (max-width: 960px) {
+      .main-content { padding: 18px 14px 36px; }
+      .chart-grid, .chart-grid-3, .connection-body { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .app-header { padding: 14px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- =====================================================
+     GLOBAL LOADING OVERLAY
+     ===================================================== -->
+<div id="globalLoading">
+  <div class="spinner-large"></div>
+  <div class="loading-msg" id="loadingMsg">Querying Databricks…</div>
+</div>
+
+<!-- =====================================================
+     HEADER
+     ===================================================== -->
+<header class="app-header">
+  <div class="header-brand">
+    <div class="logo">M</div>
+    <div>
+      <h1>NA Onboarding · First 7-Day Volume</h1>
+      <p>PMS Projects · North America · Gone Live</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span class="last-refreshed" id="lastRefreshed"></span>
+    <button class="btn btn-ghost btn-sm" onclick="refresh()" id="refreshBtn" disabled>↻ Refresh</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadSampleData()">Sample Data</button>
+  </div>
+</header>
+
+<!-- =====================================================
+     MAIN
+     ===================================================== -->
+<main class="main-content">
+
+  <!-- ── CONNECTION PANEL ── -->
+  <div class="connection-panel" id="connPanel">
+
+    <div class="connection-header" onclick="toggleConnPanel()">
+      <div class="conn-left">
+        <div class="conn-status-dot" id="connDot"></div>
+        <span>Databricks Connection</span>
+        <span class="conn-status-text" id="connStatusText">Not connected · expand to configure</span>
+      </div>
+      <span class="conn-toggle-icon open" id="connToggleIcon">▲</span>
+    </div>
+
+    <div class="connection-body" id="connBody">
+
+      <!-- Row 1: Workspace URL -->
+      <div class="conn-field full">
+        <label class="conn-label">Workspace URL</label>
+        <input class="conn-input" id="cfWorkspace" type="text"
+          placeholder="https://adb-xxxxxxxxxxxx.xx.azuredatabricks.net" />
+        <span class="conn-hint">Your full Databricks workspace URL (no trailing slash)</span>
+      </div>
+
+      <!-- Row 2: Token · Warehouse · Table -->
+      <div class="conn-field">
+        <label class="conn-label">Personal Access Token</label>
+        <input class="conn-input" id="cfToken" type="password"
+          placeholder="dapi…" />
+        <span class="conn-hint">Settings → Developer → Access Tokens</span>
+      </div>
+
+      <div class="conn-field">
+        <label class="conn-label">SQL Warehouse ID</label>
+        <input class="conn-input" id="cfWarehouse" type="text"
+          placeholder="xxxxxxxxxxxx" />
+        <span class="conn-hint">SQL Warehouses → your warehouse → Overview</span>
+      </div>
+
+      <div class="conn-field">
+        <label class="conn-label">Catalog / Schema / Table</label>
+        <input class="conn-input" id="cfTable" type="text"
+          placeholder="catalog.schema.table_name" />
+        <span class="conn-hint">Fully qualified table name (3-part)</span>
+      </div>
+
+      <!-- Error message -->
+      <div class="conn-error-msg" id="connError"></div>
+
+      <!-- Actions -->
+      <div class="conn-actions">
+        <button class="btn btn-primary" onclick="saveAndConnect()">Connect &amp; Run</button>
+        <button class="btn btn-ghost" onclick="clearCredentials()">Clear Saved</button>
+        <span class="conn-hint">Credentials are stored in <strong>localStorage</strong> in your browser — never sent anywhere except your Databricks workspace.</span>
+      </div>
+
+    </div><!-- /connection-body -->
+  </div><!-- /connection-panel -->
+
+  <!-- ── FILTER BAR ── -->
+  <div class="filter-bar">
+    <span class="filter-label">Period</span>
+    <div class="period-tabs">
+      <button class="period-tab active" data-mode="month"   onclick="setPeriodMode('month',this)">Monthly</button>
+      <button class="period-tab"        data-mode="quarter" onclick="setPeriodMode('quarter',this)">Quarterly</button>
+      <button class="period-tab"        data-mode="year"    onclick="setPeriodMode('year',this)">Full Year</button>
+    </div>
+
+    <span class="filter-label">Select</span>
+    <select class="period-select" id="periodSelect" onchange="applyFilters()"></select>
+
+    <div class="filter-pill">Type: <span>PMS</span></div>
+    <div class="filter-pill">Region: <span>North America</span></div>
+    <div class="filter-pill">Status: <span>Gone Live</span></div>
+  </div>
+
+  <!-- ── KPI CARDS ── -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="--kpi-color:var(--accent)">
+      <div class="kpi-label">Projects Gone Live</div>
+      <div class="kpi-value" id="kpiTotal">—</div>
+      <div class="kpi-sub">in selected period</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--danger)">
+      <div class="kpi-label">Zero-Volume Projects</div>
+      <div class="kpi-value" id="kpiZero">—</div>
+      <div class="kpi-sub">€0 in first 7 days</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--warning)">
+      <div class="kpi-label">% Zero Volume</div>
+      <div class="kpi-value" id="kpiZeroPct">—</div>
+      <div class="kpi-sub">of all gone-live projects</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent3)">
+      <div class="kpi-label">Total Volume (7-day)</div>
+      <div class="kpi-value" id="kpiVolume">—</div>
+      <div class="kpi-sub">sum of mews_volume_first_7_days</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent2)">
+      <div class="kpi-label">Avg Volume / Project</div>
+      <div class="kpi-value" id="kpiAvg">—</div>
+      <div class="kpi-sub">across all gone-live projects</div>
+    </div>
+  </div>
+
+  <!-- ── ROW 1: Donut + Bar by Manager ── -->
+  <div class="chart-grid">
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Revenue Distribution</div>
+          <div class="chart-subtitle">Projects by first 7-day volume tier</div>
+        </div>
+        <span class="chart-badge" id="badge1">—</span>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c0)"></div>€0</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c1)"></div>€1–€500</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c2)"></div>&gt;€500</div>
+      </div>
+      <div class="chart-body">
+        <div class="state-overlay" id="overlay1">
+          <div class="state-icon">📊</div>
+          <div class="state-text">Connect to Databricks or load sample data</div>
+        </div>
+        <canvas id="chart1"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Zero-Volume by Implementation Manager</div>
+          <div class="chart-subtitle">Projects with €0 in first 7 days</div>
+        </div>
+        <span class="chart-badge" id="badge2">—</span>
+      </div>
+      <div class="chart-body">
+        <div class="state-overlay" id="overlay2">
+          <div class="state-icon">👤</div>
+          <div class="state-text">Connect to Databricks or load sample data</div>
+        </div>
+        <canvas id="chart2"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── ROW 2: Installation Type + Territory ── -->
+  <div class="chart-grid-3">
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Zero-Volume by Installation Type</div>
+          <div class="chart-subtitle">€0 projects grouped by install type</div>
+        </div>
+        <span class="chart-badge" id="badge3">—</span>
+      </div>
+      <div class="chart-body">
+        <div class="state-overlay" id="overlay3">
+          <div class="state-icon">🔧</div>
+          <div class="state-text">Connect to Databricks or load sample data</div>
+        </div>
+        <canvas id="chart3"></canvas>
+      </div>
+      <div id="table3"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Zero-Volume by Territory</div>
+          <div class="chart-subtitle">€0 projects within North America</div>
+        </div>
+        <span class="chart-badge" id="badge4">—</span>
+      </div>
+      <div class="chart-body">
+        <div class="state-overlay" id="overlay4">
+          <div class="state-icon">🌎</div>
+          <div class="state-text">Connect to Databricks or load sample data</div>
+        </div>
+        <canvas id="chart4"></canvas>
+      </div>
+      <div id="table4"></div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer class="app-footer">
+  <span>Mews · NA Onboarding Dashboard · PMS Projects</span>
+  <span>Databricks · <code>mews_volume_first_7_days</code></span>
+</footer>
+
+
+<!-- =====================================================
+     JAVASCRIPT
+     ===================================================== -->
+<script>
+/* ============================================================
+   FIELD MAP
+   ─────────────────────────────────────────────────────────
+   Adjust these values if your Databricks column names differ
+   from the defaults. Everything else auto-adapts.
+   ============================================================ */
+const F = {
+  go_live_date:           "go_live_date",
+  project_type:           "project_type",
+  territory:              "territory",
+  project_status:         "project_status",
+  volume:                 "mews_volume_first_7_days",
+  implementation_manager: "implementation_manager",
+  installation_type:      "installation_type",
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let allData    = [];
+let filtered   = [];
+let periodMode = "month";
+let chartInstances = {};
+let isConnected    = false;
+
+/* ============================================================
+   CHART.JS DEFAULTS
+   ============================================================ */
+Chart.defaults.color       = "#94a3b8";
+Chart.defaults.borderColor = "#2e3350";
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size   = 12;
+
+/* ============================================================
+   CONNECTION PANEL
+   ============================================================ */
+function toggleConnPanel() {
+  const body = document.getElementById("connBody");
+  const icon = document.getElementById("connToggleIcon");
+  body.classList.toggle("hidden");
+  icon.classList.toggle("open");
+}
+
+function setConnStatus(state, text) {
+  const dot   = document.getElementById("connDot");
+  const label = document.getElementById("connStatusText");
+  const panel = document.getElementById("connPanel");
+
+  dot.className   = "conn-status-dot " + (state || "");
+  label.textContent = text;
+  panel.className   = "connection-panel " + (state === "connected" ? "connected" : state === "error" ? "error" : "");
+}
+
+function showConnError(msg) {
+  const el = document.getElementById("connError");
+  el.textContent = "⚠ " + msg;
+  el.classList.add("visible");
+}
+
+function clearConnError() {
+  document.getElementById("connError").classList.remove("visible");
+}
+
+/* ─── Persist credentials to localStorage ─── */
+function saveCredentials() {
+  const cfg = getConfig();
+  // Store all except the token in plain text; token gets a basic notice
+  localStorage.setItem("db_workspace", cfg.workspace);
+  localStorage.setItem("db_warehouse", cfg.warehouse);
+  localStorage.setItem("db_table",     cfg.table);
+  // Token stored in localStorage — only suitable for personal/private use
+  localStorage.setItem("db_token",     cfg.token);
+}
+
+function loadCredentials() {
+  document.getElementById("cfWorkspace").value = localStorage.getItem("db_workspace") || "";
+  document.getElementById("cfWarehouse").value = localStorage.getItem("db_warehouse") || "";
+  document.getElementById("cfTable").value     = localStorage.getItem("db_table")     || "";
+  document.getElementById("cfToken").value     = localStorage.getItem("db_token")     || "";
+}
+
+function clearCredentials() {
+  ["db_workspace","db_token","db_warehouse","db_table"].forEach(k => localStorage.removeItem(k));
+  ["cfWorkspace","cfToken","cfWarehouse","cfTable"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  setConnStatus("", "Credentials cleared");
+}
+
+function getConfig() {
+  return {
+    workspace: (document.getElementById("cfWorkspace").value || "").trim().replace(/\/+$/,""),
+    token:      document.getElementById("cfToken").value.trim(),
+    warehouse:  document.getElementById("cfWarehouse").value.trim(),
+    table:      document.getElementById("cfTable").value.trim(),
+  };
+}
+
+async function saveAndConnect() {
+  clearConnError();
+  const cfg = getConfig();
+
+  if (!cfg.workspace) return showConnError("Workspace URL is required.");
+  if (!cfg.token)     return showConnError("Personal Access Token is required.");
+  if (!cfg.warehouse) return showConnError("SQL Warehouse ID is required.");
+  if (!cfg.table)     return showConnError("Table name is required.");
+
+  saveCredentials();
+  setConnStatus("loading", "Connecting…");
+
+  // Collapse the panel
+  const body = document.getElementById("connBody");
+  const icon = document.getElementById("connToggleIcon");
+  body.classList.add("hidden");
+  icon.classList.remove("open");
+
+  await runQuery(cfg);
+}
+
+/* ============================================================
+   DATABRICKS SQL REST API
+   ─────────────────────────────────────────────────────────
+   Calls POST /api/2.0/sql/statements with a SQL query
+   filtered to the selected period.
+   Docs: https://docs.databricks.com/api/workspace/statementexecution
+   ============================================================ */
+async function runQuery(cfg) {
+  const val = document.getElementById("periodSelect").value;
+  if (!val) return;
+
+  const { start, end } = getPeriodRange(val);
+  const startStr = fmtDate(start);
+  const endStr   = fmtDate(end);
+
+  /* ─────────────────────────────────────────────────────
+     SQL QUERY
+     Adjust the WHERE clause territory list if your values
+     differ from USA / Canada / LAC.
+     ───────────────────────────────────────────────────── */
+  const sql = `
+    SELECT
+      ${F.go_live_date},
+      ${F.project_type},
+      ${F.territory},
+      ${F.project_status},
+      ${F.volume},
+      ${F.implementation_manager},
+      ${F.installation_type}
+    FROM ${cfg.table}
+    WHERE LOWER(${F.project_type})   = 'pms'
+      AND LOWER(${F.project_status}) = 'gone live'
+      AND ${F.territory} IN ('USA', 'Canada', 'LAC')
+      AND ${F.go_live_date} >= '${startStr}'
+      AND ${F.go_live_date} <  '${endStr}'
+  `.trim();
+
+  showGlobalLoading("Querying Databricks…");
+
+  try {
+    const result = await databricksQuery(cfg, sql);
+    allData    = result;
+    isConnected = true;
+    setConnStatus("connected", `Connected · ${result.length} rows · ${fmtDateTime(new Date())}`);
+    document.getElementById("lastRefreshed").textContent = "Refreshed " + fmtDateTime(new Date());
+    document.getElementById("refreshBtn").disabled = false;
+    renderDashboard(result);
+  } catch (err) {
+    setConnStatus("error", "Query failed");
+    showConnError(err.message);
+    // Re-open panel on error
+    document.getElementById("connBody").classList.remove("hidden");
+    document.getElementById("connToggleIcon").classList.add("open");
+  } finally {
+    hideGlobalLoading();
+  }
+}
+
+/* ─── Core Databricks API call with polling ─── */
+async function databricksQuery(cfg, sql) {
+  const url     = `${cfg.workspace}/api/2.0/sql/statements`;
+  const headers = {
+    "Authorization": `Bearer ${cfg.token}`,
+    "Content-Type":  "application/json",
+  };
+
+  /* Submit statement */
+  const submitRes = await fetch(url, {
+    method:  "POST",
+    headers,
+    body: JSON.stringify({
+      warehouse_id:  cfg.warehouse,
+      statement:     sql,
+      wait_timeout:  "30s",      // sync wait; Databricks will inline result if fast
+      on_wait_timeout: "CONTINUE",
+      format:        "JSON_ARRAY",
+    }),
+  });
+
+  if (!submitRes.ok) {
+    const body = await submitRes.text();
+    throw new Error(`HTTP ${submitRes.status}: ${body}`);
+  }
+
+  let data = await submitRes.json();
+
+  /* Poll if still running */
+  while (data.status?.state === "RUNNING" || data.status?.state === "PENDING") {
+    await sleep(1500);
+    const pollRes = await fetch(
+      `${cfg.workspace}/api/2.0/sql/statements/${data.statement_id}`,
+      { headers }
+    );
+    data = await pollRes.json();
+  }
+
+  if (data.status?.state === "FAILED") {
+    throw new Error(data.status?.error?.message || "Query failed in Databricks");
+  }
+
+  if (data.status?.state !== "SUCCEEDED") {
+    throw new Error(`Unexpected state: ${data.status?.state}`);
+  }
+
+  /* Parse columns + rows into array-of-objects */
+  const cols = (data.manifest?.schema?.columns || []).map(c => c.name);
+  const rows = data.result?.data_array || [];
+
+  return rows.map(row => {
+    const obj = {};
+    cols.forEach((c, i) => { obj[c] = row[i]; });
+    return obj;
+  });
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ============================================================
+   REFRESH (re-runs query with current period)
+   ============================================================ */
+function refresh() {
+  const cfg = getConfig();
+  if (!cfg.workspace || !cfg.token || !cfg.warehouse || !cfg.table) {
+    setConnStatus("error", "Connection not configured");
+    document.getElementById("connBody").classList.remove("hidden");
+    return;
+  }
+  runQuery(cfg);
+}
+
+/* ============================================================
+   PERIOD SELECTOR
+   ============================================================ */
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function buildPeriodOptions() {
+  const sel = document.getElementById("periodSelect");
+  sel.innerHTML = "";
+  const now = new Date();
+
+  if (periodMode === "month") {
+    let d = new Date(2026, 0, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    while (d < end) {
+      const val   = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      const label = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+      addOption(sel, val, label);
+      d = new Date(d.getFullYear(), d.getMonth()+1, 1);
+    }
+
+  } else if (periodMode === "quarter") {
+    for (let y = 2026; y <= now.getFullYear(); y++) {
+      const maxQ = (y === now.getFullYear()) ? Math.ceil((now.getMonth()+1)/3) : 4;
+      for (let q = 1; q <= maxQ; q++) {
+        addOption(sel, `${y}-Q${q}`, `Q${q} ${y}`);
+      }
+    }
+
+  } else {
+    for (let y = 2026; y <= now.getFullYear(); y++) {
+      addOption(sel, `${y}`, `Full Year ${y}`);
+    }
+  }
+
+  sel.selectedIndex = sel.options.length - 1;
+}
+
+function addOption(sel, val, label) {
+  const opt = document.createElement("option");
+  opt.value = val; opt.textContent = label;
+  sel.appendChild(opt);
+}
+
+function getPeriodRange(val) {
+  if (periodMode === "month") {
+    const [y,m] = val.split("-").map(Number);
+    return { start: new Date(y, m-1, 1), end: new Date(y, m, 1) };
+  }
+  if (periodMode === "quarter") {
+    const [yStr, qStr] = val.split("-");
+    const y = parseInt(yStr), q = parseInt(qStr.replace("Q",""));
+    const sm = (q-1)*3;
+    return { start: new Date(y, sm, 1), end: new Date(y, sm+3, 1) };
+  }
+  const y = parseInt(val);
+  return { start: new Date(y, 0, 1), end: new Date(y+1, 0, 1) };
+}
+
+function setPeriodMode(mode, btn) {
+  periodMode = mode;
+  document.querySelectorAll(".period-tab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  buildPeriodOptions();
+  // If connected, re-query; otherwise filter local data
+  if (isConnected) {
+    const cfg = getConfig();
+    if (cfg.workspace && cfg.token) { runQuery(cfg); return; }
+  }
+  applyLocalFilters();
+}
+
+/* ============================================================
+   LOCAL FILTER (used when data already in memory)
+   ============================================================ */
+function applyFilters() {
+  if (isConnected) {
+    // Re-query Databricks with the new date range
+    const cfg = getConfig();
+    if (cfg.workspace && cfg.token && cfg.warehouse && cfg.table) {
+      runQuery(cfg);
+      return;
+    }
+  }
+  applyLocalFilters();
+}
+
+function applyLocalFilters() {
+  if (!allData.length) { renderEmpty(); return; }
+  const val = document.getElementById("periodSelect").value;
+  if (!val) { renderEmpty(); return; }
+
+  const { start, end } = getPeriodRange(val);
+
+  filtered = allData.filter(row => {
+    const type   = (row[F.project_type]   || "").toLowerCase();
+    const status = (row[F.project_status] || "").toLowerCase();
+    if (!type.includes("pms"))         return false;
+    if (!status.includes("gone live")) return false;
+    const gld = parseDate(row[F.go_live_date]);
+    if (!gld) return false;
+    return gld >= start && gld < end;
+  });
+
+  renderDashboard(filtered);
+}
+
+/* ============================================================
+   DASHBOARD RENDERER
+   ============================================================ */
+function renderDashboard(rows) {
+  if (!rows || !rows.length) { renderEmpty(); return; }
+
+  const total   = rows.length;
+  const volumes = rows.map(r => parseVolume(r[F.volume]));
+  const totalV  = volumes.reduce((a,b)=>a+b, 0);
+  const avgV    = total ? totalV/total : 0;
+
+  const zeroRows = rows.filter((_,i) => volumes[i] === 0);
+  const lowRows  = rows.filter((_,i) => volumes[i] >  0 && volumes[i] <= 500);
+  const highRows = rows.filter((_,i) => volumes[i] > 500);
+  const zeroPct  = total ? ((zeroRows.length/total)*100).toFixed(1) : "0.0";
+
+  /* KPIs */
+  set("kpiTotal",   total);
+  set("kpiZero",    zeroRows.length);
+  set("kpiZeroPct", zeroPct + "%");
+  set("kpiVolume",  fmtEuro(totalV));
+  set("kpiAvg",     fmtEuro(avgV));
+
+  /* Chart 1 – Donut */
+  renderDonut({
+    canvasId:"chart1", overlayId:"overlay1", badgeId:"badge1",
+    badgeText: `${total} projects`,
+    labels: ["€0","€1–€500",">€500"],
+    counts: [zeroRows.length, lowRows.length, highRows.length],
+    colors: ["#f87171","#fbbf24","#34d399"],
+  });
+
+  /* Chart 2 – Bar by manager */
+  renderHBar({
+    canvasId:"chart2", overlayId:"overlay2", badgeId:"badge2",
+    badgeText: `${zeroRows.length} zero-vol`,
+    data: groupBy(zeroRows, r => r[F.implementation_manager]),
+    color: "#f87171",
+  });
+
+  /* Chart 3 – Pie by install type */
+  renderPie({
+    canvasId:"chart3", overlayId:"overlay3", badgeId:"badge3",
+    badgeText: `${zeroRows.length} zero-vol`,
+    data: groupBy(zeroRows, r => r[F.installation_type]),
+    tableId: "table3", total: zeroRows.length,
+  });
+
+  /* Chart 4 – Bar by territory */
+  renderVBar({
+    canvasId:"chart4", overlayId:"overlay4", badgeId:"badge4",
+    badgeText: `${zeroRows.length} zero-vol`,
+    data: groupBy(zeroRows, r => r[F.territory]),
+    tableId: "table4", total: zeroRows.length,
+  });
+}
+
+function renderEmpty() {
+  ["kpiTotal","kpiZero","kpiZeroPct","kpiVolume","kpiAvg"].forEach(id => set(id,"—"));
+  ["overlay1","overlay2","overlay3","overlay4"].forEach(id =>
+    document.getElementById(id).classList.remove("hidden"));
+  ["table3","table4"].forEach(id => { document.getElementById(id).innerHTML = ""; });
+  Object.values(chartInstances).forEach(c => c.destroy());
+  chartInstances = {};
+}
+
+/* ============================================================
+   CHART BUILDERS
+   ============================================================ */
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function renderDonut({ canvasId, overlayId, badgeId, badgeText, labels, counts, colors }) {
+  document.getElementById(overlayId).classList.add("hidden");
+  document.getElementById(badgeId).textContent = badgeText;
+  destroyChart(canvasId);
+  const total = counts.reduce((a,b)=>a+b,0);
+
+  chartInstances[canvasId] = new Chart(document.getElementById(canvasId), {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{ data: counts, backgroundColor: colors, borderColor:"#1a1d27", borderWidth:3, hoverOffset:8 }],
+    },
+    options: {
+      cutout: "60%",
+      plugins: {
+        legend: { position:"bottom", labels:{ padding:18, usePointStyle:true, pointStyle:"rectRounded" }},
+        tooltip: { callbacks: { label: ctx => {
+          const pct = total ? ((ctx.parsed/total)*100).toFixed(1) : "0.0";
+          return `  ${ctx.label}: ${ctx.parsed} projects (${pct}%)`;
+        }}},
+      },
+      animation: { duration:600 },
+    },
+  });
+}
+
+function renderHBar({ canvasId, overlayId, badgeId, badgeText, data, color }) {
+  document.getElementById(overlayId).classList.add("hidden");
+  document.getElementById(badgeId).textContent = badgeText;
+  destroyChart(canvasId);
+
+  const sorted = Object.entries(data).sort((a,b)=>b[1]-a[1]);
+  const labels = sorted.map(e=>e[0]);
+  const values = sorted.map(e=>e[1]);
+  const total  = values.reduce((a,b)=>a+b,0);
+
+  chartInstances[canvasId] = new Chart(document.getElementById(canvasId), {
+    type:"bar",
+    data:{
+      labels,
+      datasets:[{
+        label:"Zero-volume projects",
+        data: values,
+        backgroundColor: color+"bb",
+        borderColor: color,
+        borderWidth:1.5,
+        borderRadius:6,
+        borderSkipped:false,
+      }],
+    },
+    options:{
+      indexAxis:"y",
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label: ctx => {
+          const pct = total ? ((ctx.parsed.x/total)*100).toFixed(1):"0.0";
+          return `  ${ctx.parsed.x} projects (${pct}%)`;
+        }}},
+      },
+      scales:{
+        x:{ grid:{ color:"#2e3350" }, ticks:{ precision:0 }},
+        y:{ grid:{ display:false }},
+      },
+      animation:{ duration:600 },
+    },
+  });
+}
+
+function renderPie({ canvasId, overlayId, badgeId, badgeText, data, tableId, total }) {
+  document.getElementById(overlayId).classList.add("hidden");
+  document.getElementById(badgeId).textContent = badgeText;
+  destroyChart(canvasId);
+
+  const sorted  = Object.entries(data).sort((a,b)=>b[1]-a[1]);
+  const labels  = sorted.map(e=>e[0]);
+  const values  = sorted.map(e=>e[1]);
+  const palette = genPalette(labels.length);
+
+  chartInstances[canvasId] = new Chart(document.getElementById(canvasId), {
+    type:"pie",
+    data:{
+      labels,
+      datasets:[{ data:values, backgroundColor:palette, borderColor:"#1a1d27", borderWidth:2, hoverOffset:6 }],
+    },
+    options:{
+      plugins:{
+        legend:{ position:"bottom", labels:{ padding:14, usePointStyle:true, pointStyle:"circle" }},
+        tooltip:{ callbacks:{ label: ctx => {
+          const pct = total ? ((ctx.parsed/total)*100).toFixed(1):"0.0";
+          return `  ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+        }}},
+      },
+      animation:{ duration:600 },
+    },
+  });
+
+  renderSummaryTable(tableId, sorted, total, palette);
+}
+
+function renderVBar({ canvasId, overlayId, badgeId, badgeText, data, tableId, total }) {
+  document.getElementById(overlayId).classList.add("hidden");
+  document.getElementById(badgeId).textContent = badgeText;
+  destroyChart(canvasId);
+
+  const sorted  = Object.entries(data).sort((a,b)=>b[1]-a[1]);
+  const labels  = sorted.map(e=>e[0]);
+  const values  = sorted.map(e=>e[1]);
+  const palette = genPalette(labels.length);
+
+  chartInstances[canvasId] = new Chart(document.getElementById(canvasId), {
+    type:"bar",
+    data:{
+      labels,
+      datasets:[{
+        label:"Zero-volume projects",
+        data: values,
+        backgroundColor: palette,
+        borderColor: palette,
+        borderWidth:1.5,
+        borderRadius:8,
+        borderSkipped:false,
+      }],
+    },
+    options:{
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label: ctx => {
+          const pct = total ? ((ctx.parsed.y/total)*100).toFixed(1):"0.0";
+          return `  ${ctx.parsed.y} projects (${pct}%)`;
+        }}},
+      },
+      scales:{
+        x:{ grid:{ display:false }},
+        y:{ grid:{ color:"#2e3350" }, ticks:{ precision:0 }},
+      },
+      animation:{ duration:600 },
+    },
+  });
+
+  renderSummaryTable(tableId, sorted, total, palette);
+}
+
+function renderSummaryTable(containerId, sorted, total, palette) {
+  const el = document.getElementById(containerId);
+  if (!sorted.length) { el.innerHTML=""; return; }
+
+  let html = `<table class="summary-table">
+    <thead><tr><th>Name</th><th>Count</th><th>Share</th></tr></thead><tbody>`;
+
+  sorted.forEach(([name, count], i) => {
+    const pct = total ? ((count/total)*100).toFixed(1) : "0.0";
+    html += `<tr>
+      <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${palette[i]};margin-right:7px;vertical-align:middle;"></span>${esc(name)}</td>
+      <td style="color:var(--text);font-weight:600;">${count}</td>
+      <td>
+        <div class="bar-inline">
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${palette[i]};"></div></div>
+          <span class="pct-label" style="color:${palette[i]}">${pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  html += "</tbody></table>";
+  el.innerHTML = html;
+}
+
+/* ============================================================
+   GLOBAL LOADING OVERLAY
+   ============================================================ */
+function showGlobalLoading(msg) {
+  document.getElementById("loadingMsg").textContent = msg || "Loading…";
+  document.getElementById("globalLoading").classList.add("visible");
+}
+
+function hideGlobalLoading() {
+  document.getElementById("globalLoading").classList.remove("visible");
+}
+
+/* ============================================================
+   SAMPLE DATA (for testing without Databricks)
+   ============================================================ */
+function loadSampleData() {
+  isConnected = false; // use local filter path
+  allData = [
+    { go_live_date:"2026-01-05", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Sarah Mitchell",  installation_type:"Remote"  },
+    { go_live_date:"2026-01-07", project_type:"PMS", territory:"Canada", project_status:"Gone Live", mews_volume_first_7_days:320,  implementation_manager:"James Okafor",    installation_type:"Hybrid"  },
+    { go_live_date:"2026-01-10", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Sarah Mitchell",  installation_type:"Remote"  },
+    { go_live_date:"2026-01-12", project_type:"PMS", territory:"LAC",    project_status:"Gone Live", mews_volume_first_7_days:1250, implementation_manager:"Carlos Mendez",   installation_type:"On-site" },
+    { go_live_date:"2026-01-14", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Emily Chen",      installation_type:"Remote"  },
+    { go_live_date:"2026-01-16", project_type:"PMS", territory:"Canada", project_status:"Gone Live", mews_volume_first_7_days:780,  implementation_manager:"James Okafor",    installation_type:"Remote"  },
+    { go_live_date:"2026-01-20", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Emily Chen",      installation_type:"Hybrid"  },
+    { go_live_date:"2026-01-22", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:450,  implementation_manager:"Sarah Mitchell",  installation_type:"Remote"  },
+    { go_live_date:"2026-01-25", project_type:"PMS", territory:"Canada", project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Carlos Mendez",   installation_type:"On-site" },
+    { go_live_date:"2026-01-28", project_type:"PMS", territory:"LAC",    project_status:"Gone Live", mews_volume_first_7_days:2100, implementation_manager:"Emily Chen",      installation_type:"Hybrid"  },
+    { go_live_date:"2026-02-03", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Sarah Mitchell",  installation_type:"Remote"  },
+    { go_live_date:"2026-02-10", project_type:"PMS", territory:"Canada", project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"James Okafor",    installation_type:"Hybrid"  },
+    { go_live_date:"2026-02-14", project_type:"PMS", territory:"LAC",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Carlos Mendez",   installation_type:"On-site" },
+    { go_live_date:"2026-02-18", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:3200, implementation_manager:"Priya Sharma",    installation_type:"On-site" },
+    { go_live_date:"2026-02-20", project_type:"PMS", territory:"Canada", project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Sarah Mitchell",  installation_type:"Remote"  },
+    { go_live_date:"2026-02-24", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:420,  implementation_manager:"James Okafor",    installation_type:"Hybrid"  },
+    { go_live_date:"2026-03-07", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Carlos Mendez",   installation_type:"Remote"  },
+    { go_live_date:"2026-03-10", project_type:"PMS", territory:"LAC",    project_status:"Gone Live", mews_volume_first_7_days:550,  implementation_manager:"Sarah Mitchell",  installation_type:"Hybrid"  },
+    { go_live_date:"2026-03-14", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"James Okafor",    installation_type:"Remote"  },
+    { go_live_date:"2026-03-22", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Priya Sharma",    installation_type:"Remote"  },
+    { go_live_date:"2026-04-05", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:890,  implementation_manager:"James Okafor",    installation_type:"Hybrid"  },
+    { go_live_date:"2026-04-09", project_type:"PMS", territory:"LAC",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Emily Chen",      installation_type:"Remote"  },
+    { go_live_date:"2026-04-16", project_type:"PMS", territory:"Canada", project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Carlos Mendez",   installation_type:"Remote"  },
+    { go_live_date:"2026-05-06", project_type:"PMS", territory:"Canada", project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Priya Sharma",    installation_type:"Remote"  },
+    { go_live_date:"2026-05-09", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Carlos Mendez",   installation_type:"Hybrid"  },
+    { go_live_date:"2026-05-17", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"James Okafor",    installation_type:"Remote"  },
+    { go_live_date:"2026-06-02", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Carlos Mendez",   installation_type:"Remote"  },
+    { go_live_date:"2026-06-05", project_type:"PMS", territory:"Canada", project_status:"Gone Live", mews_volume_first_7_days:750,  implementation_manager:"Sarah Mitchell",  installation_type:"Hybrid"  },
+    { go_live_date:"2026-06-08", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"James Okafor",    installation_type:"Remote"  },
+    { go_live_date:"2026-06-12", project_type:"PMS", territory:"USA",    project_status:"Gone Live", mews_volume_first_7_days:0,    implementation_manager:"Priya Sharma",    installation_type:"Remote"  },
+  ];
+
+  document.getElementById("lastRefreshed").textContent = "Sample data loaded";
+  setConnStatus("", "Using sample data — connect Databricks for live data");
+  applyLocalFilters();
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function groupBy(arr, keyFn) {
+  const m = {};
+  arr.forEach(r => { const k = keyFn(r)||"Unknown"; m[k]=(m[k]||0)+1; });
+  return m;
+}
+
+function parseDate(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function parseVolume(val) {
+  const n = parseFloat(String(val||"").replace(/[^0-9.\-]/g,""));
+  return isNaN(n) ? 0 : n;
+}
+
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function fmtDateTime(d) {
+  return d.toLocaleString(undefined, { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+}
+
+function fmtEuro(n) {
+  if (n >= 1_000_000) return "€"+(n/1_000_000).toFixed(1)+"M";
+  if (n >= 1_000)     return "€"+(n/1_000).toFixed(1)+"k";
+  return "€"+Math.round(n).toLocaleString();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function set(id, val) { document.getElementById(id).textContent = val; }
+
+const PALETTE = [
+  "#5c6ef8","#a78bfa","#34d399","#fbbf24","#f87171",
+  "#60a5fa","#fb923c","#4ade80","#e879f9","#38bdf8",
+  "#facc15","#94a3b8","#f472b6","#2dd4bf","#c084fc",
+];
+
+function genPalette(n) {
+  const out = [];
+  for (let i=0; i<n; i++) out.push(PALETTE[i % PALETTE.length]);
+  return out;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+buildPeriodOptions();
+loadCredentials();
+
+// Auto-connect if saved credentials exist
+const savedCfg = getConfig();
+if (savedCfg.workspace && savedCfg.token && savedCfg.warehouse && savedCfg.table) {
+  // Collapse the panel since we have credentials
+  document.getElementById("connBody").classList.add("hidden");
+  document.getElementById("connToggleIcon").classList.remove("open");
+  setConnStatus("loading", "Reconnecting…");
+  runQuery(savedCfg);
+}
+
+</script>
+</body>
+</html>
